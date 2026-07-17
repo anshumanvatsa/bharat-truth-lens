@@ -16,3 +16,4 @@ scikit-learn
 numpy
 groq
 email-validator
+python-multipart
