@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Shield, Eye, EyeOff, LogIn, AlertCircle, CheckCircle } from "lucide-react";
+import { Eye, EyeOff, LogIn, AlertCircle, CheckCircle } from "lucide-react";
 import { apiLogin, saveUser, saveProfile, apiGetMe } from "../lib/api";
 
 const LoginPage = () => {
@@ -54,7 +54,14 @@ const LoginPage = () => {
       >
         <div className="text-center mb-8">
           <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-4">
-            <Shield className="h-7 w-7 text-primary" />
+            <svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="32" cy="32" r="30" fill="#0F172A" stroke="#FF6B35" strokeWidth="2"/>
+              <rect x="10" y="19" width="44" height="8" rx="1" fill="#FF6B35"/>
+              <rect x="10" y="27" width="44" height="8" rx="1" fill="#F8FAFC"/>
+              <rect x="10" y="35" width="44" height="8" rx="1" fill="#22C55E"/>
+              <circle cx="32" cy="31" r="5" fill="none" stroke="#1e3a8a" strokeWidth="1.5"/>
+              <circle cx="32" cy="31" r="1.5" fill="#1e3a8a"/>
+            </svg>
           </div>
           <h1 className="font-display text-2xl font-bold">Welcome Back</h1>
           <p className="text-muted-foreground text-sm mt-1">
