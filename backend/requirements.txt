@@ -10,7 +10,9 @@ xgboost
 tavily-python
 python-dotenv
 pydantic
+pydantic-settings
 requests
 scikit-learn
 numpy
 groq
+email-validator
