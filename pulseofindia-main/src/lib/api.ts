@@ -3,6 +3,28 @@
 
 const BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
+export const API_BASE = BASE;
+
+// ── Backend wake-up helper ────────────────────────────────────────────────────
+// Render free tier sleeps after 15min inactivity. Wake it up before user submits.
+let _wakeupPromise: Promise<boolean> | null = null;
+
+export async function wakeBackend(): Promise<boolean> {
+  if (_wakeupPromise) return _wakeupPromise;
+  _wakeupPromise = (async () => {
+    try {
+      const r = await fetch(`${BASE}/health`, { signal: AbortSignal.timeout(70000) });
+      return r.ok;
+    } catch {
+      return false;
+    } finally {
+      // Reset after 5 minutes so next visit re-checks
+      setTimeout(() => { _wakeupPromise = null; }, 5 * 60 * 1000);
+    }
+  })();
+  return _wakeupPromise;
+}
+
 // ── Auth token helpers ────────────────────────────────────────────────────────
 
 export function getToken(): string | null {

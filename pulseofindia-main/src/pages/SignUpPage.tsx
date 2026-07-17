@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, UserPlus, AlertCircle, CheckCircle } from "lucide-react";
-import { apiSignup } from "../lib/api";
+import { Eye, EyeOff, UserPlus, AlertCircle, CheckCircle, Wifi, WifiOff } from "lucide-react";
+import { apiSignup, wakeBackend } from "../lib/api";
 
 const STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
@@ -37,6 +37,13 @@ const SignUpPage = () => {
   const [loading, setLoading]             = useState(false);
   const [error, setError]                 = useState<string | null>(null);
   const [success, setSuccess]             = useState(false);
+  const [backendReady, setBackendReady]   = useState<boolean | null>(null); // null=checking
+
+  // Wake the backend as soon as this page loads so it's ready when user submits
+  useEffect(() => {
+    setBackendReady(null);
+    wakeBackend().then((ok) => setBackendReady(ok));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,11 +64,14 @@ const SignUpPage = () => {
       setSuccess(true);
       setTimeout(() => navigate("/login"), 1500);
     } catch (err: any) {
-      const msg = err.message || "";
-      if (msg.toLowerCase().includes("failed to fetch") || msg.toLowerCase().includes("network")) {
-        setError("Backend is waking up (free tier sleeps after inactivity). Please wait 30 seconds and try again.");
+      const msg = (err.message || "").toLowerCase();
+      if (msg.includes("failed to fetch") || msg.includes("network") || msg.includes("load")) {
+        setError("Server is still waking up. Please wait a few more seconds and try again.");
+        // Retry wakeup check
+        setBackendReady(null);
+        wakeBackend().then((ok) => setBackendReady(ok));
       } else {
-        setError(msg || "Signup failed. Try a different email.");
+        setError(err.message || "Signup failed. Try a different email.");
       }
     } finally {
       setLoading(false);
@@ -70,6 +80,23 @@ const SignUpPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-16">
+      {/* Backend wakeup status banner */}
+      {backendReady === null && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 text-sm px-4 py-2 rounded-full backdrop-blur-sm">
+          <div className="animate-spin h-3.5 w-3.5 border-2 border-yellow-400 border-t-transparent rounded-full" />
+          Connecting to server… (may take up to 60s on free tier)
+        </div>
+      )}
+      {backendReady === true && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-green-500/20 border border-green-500/40 text-green-300 text-sm px-4 py-2 rounded-full backdrop-blur-sm">
+          <Wifi className="h-3.5 w-3.5" /> Server ready
+        </div>
+      )}
+      {backendReady === false && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-red-500/20 border border-red-500/40 text-red-300 text-sm px-4 py-2 rounded-full backdrop-blur-sm">
+          <WifiOff className="h-3.5 w-3.5" /> Server unreachable — try refreshing
+        </div>
+      )}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
