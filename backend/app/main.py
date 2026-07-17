@@ -10,22 +10,15 @@ settings = get_settings()
 
 app = FastAPI(title=settings.app_name)
 
-# Allow frontend origins
-origins = [
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    # Production Vercel deployment
-    "https://bharat-truth-lens.vercel.app",
-    "https://bharat-truth-lens-gdj4b8ad6-atulvatsamishra-gmailcoms-projects.vercel.app",
-]
-
+# CORS — open to all origins
+# We use JWT Bearer tokens (not cookies) so allow_credentials=False is correct.
+# allow_origins=["*"] works with allow_credentials=False and handles all Vercel
+# preview URLs, localhost variants, and any future domain without code changes.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
 
@@ -37,4 +30,4 @@ app.include_router(vote_router.router)
 # Health check
 @app.get("/health", tags=["system"])
 async def health_check():
-    return {"status": "ok"}
+    return {"status": "ok"}
