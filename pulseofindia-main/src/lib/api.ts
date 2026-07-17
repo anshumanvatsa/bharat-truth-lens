@@ -156,3 +156,32 @@ export async function apiGetStates() {
   const res = await fetch(`${BASE}/vote/states`);
   return res.json();
 }
+
+// ── CM Voting API ─────────────────────────────────────────────────────────────
+
+export async function apiGetCMCandidates() {
+  const res = await apiFetch("/vote/cm/candidates");
+  if (!res.ok) return { state: "", candidates: [] };
+  return res.json();
+}
+
+export async function apiGetMyCMVote() {
+  const res = await apiFetch("/vote/cm/my-vote");
+  if (!res.ok) return { has_voted: false, candidate_id: null };
+  return res.json();
+}
+
+export async function apiCastCMVote(candidate_id: string) {
+  const res = await apiFetch("/vote/cm", {
+    method: "POST",
+    body: JSON.stringify({ candidate_id }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.detail || "CM vote failed");
+  return data;
+}
+
+export async function apiGetCMResults(state: string) {
+  const res = await fetch(`${BASE}/vote/cm/results?state=${encodeURIComponent(state)}`);
+  return res.json();
+}

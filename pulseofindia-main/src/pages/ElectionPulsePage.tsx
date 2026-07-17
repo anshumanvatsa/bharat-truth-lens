@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import {
   apiGetCandidates, apiGetResults, apiCastVote,
-  apiGetMyVote, isLoggedIn, getProfile
+  apiGetMyVote, isLoggedIn, getProfile,
+  apiGetCMCandidates, apiGetMyCMVote, apiCastCMVote, apiGetCMResults,
 } from "../lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -59,7 +60,22 @@ const ElectionPulsePage = () => {
   const [error, setError]         = useState<string | null>(null);
   const [voted, setVoted]         = useState(false);
 
-  // Load data on mount
+  // ── Active tab: 'pm' | 'cm' ──────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<"pm" | "cm">("pm");
+
+  // ── CM state ──────────────────────────────────────────────────────────────
+  const [cmCandidates,      setCmCandidates]      = useState<Candidate[]>([]);
+  const [cmState,           setCmState]           = useState("");
+  const [cmResults,         setCmResults]         = useState<any>(null);
+  const [cmMyVote,          setCmMyVote]          = useState<{ has_voted: boolean; candidate_id: string | null }>({ has_voted: false, candidate_id: null });
+  const [cmSelected,        setCmSelected]        = useState("");
+  const [cmVoting,          setCmVoting]          = useState(false);
+  const [cmVoted,           setCmVoted]           = useState(false);
+  const [cmError,           setCmError]           = useState<string | null>(null);
+  const [cmSelectedAge,     setCmSelectedAge]     = useState("18-25");
+  const [cmLoading,         setCmLoading]         = useState(true);
+
+  // Load PM + CM data on mount
   useEffect(() => {
     (async () => {
       try {
@@ -74,6 +90,25 @@ const ElectionPulsePage = () => {
           const mv = await apiGetMyVote();
           setMyVote(mv);
           if (mv.has_voted) setVoted(true);
+
+          // CM data
+          try {
+            const [cmCand, cmMv] = await Promise.all([
+              apiGetCMCandidates(),
+              apiGetMyCMVote(),
+            ]);
+            setCmCandidates(cmCand.candidates || []);
+            setCmState(cmCand.state || "");
+            setCmMyVote(cmMv);
+            if (cmMv.has_voted) setCmVoted(true);
+            if (cmCand.state) {
+              const cmR = await apiGetCMResults(cmCand.state);
+              setCmResults(cmR);
+            }
+          } catch { /* CM data optional */ }
+          finally { setCmLoading(false); }
+        } else {
+          setCmLoading(false);
         }
       } catch {
         setError("Could not load election data. Is the backend running?");
@@ -91,13 +126,31 @@ const ElectionPulsePage = () => {
       await apiCastVote(selectedCandidate);
       setMyVote({ has_voted: true, candidate_id: selectedCandidate });
       setVoted(true);
-      // Refresh results
       const rData = await apiGetResults();
       setResults(rData);
     } catch (err: any) {
       setError(err.message || "Vote failed. Please try again.");
     } finally {
       setVoting(false);
+    }
+  };
+
+  const handleCMVote = async () => {
+    if (!cmSelected) return setCmError("Please select a candidate first.");
+    setCmVoting(true);
+    setCmError(null);
+    try {
+      await apiCastCMVote(cmSelected);
+      setCmMyVote({ has_voted: true, candidate_id: cmSelected });
+      setCmVoted(true);
+      if (cmState) {
+        const cmR = await apiGetCMResults(cmState);
+        setCmResults(cmR);
+      }
+    } catch (err: any) {
+      setCmError(err.message || "CM vote failed. Please try again.");
+    } finally {
+      setCmVoting(false);
     }
   };
 
@@ -150,19 +203,19 @@ const ElectionPulsePage = () => {
     <div className="container mx-auto px-4 py-12">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="max-w-6xl mx-auto">
 
-        {/* Header */}
+        {/* Header + tab switcher */}
         <div className="mb-8">
           <h1 className="font-display text-3xl md:text-4xl font-bold mb-2">
             Election <span className="text-gradient-saffron">Pulse</span>
           </h1>
           <p className="text-muted-foreground">
-            Virtual PM opinion poll — one person, one vote. Real-time results by age group &amp; state.
+            Virtual opinion polls — one person, one vote. Real-time results by age group & state.
           </p>
           {results && (
             <div className="flex items-center gap-2 mt-3">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-sm text-muted-foreground">
-                {results.total_votes.toLocaleString()} votes cast so far
+                {results.total_votes.toLocaleString()} PM votes cast so far
               </span>
               <button onClick={refreshResults} className="ml-2 text-primary hover:text-primary/80 transition-colors">
                 <RefreshCw className="h-3.5 w-3.5" />
@@ -449,6 +502,216 @@ const ElectionPulsePage = () => {
 
           </div>
         </div>
+
+        {/* ── Tab switcher: PM / CM ───────────────────────────────────────── */}
+        <div className="flex gap-2 mt-10 mb-6">
+          <button
+            onClick={() => setActiveTab("pm")}
+            className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all ${
+              activeTab === "pm"
+                ? "bg-primary text-white shadow-lg shadow-primary/30"
+                : "bg-card border border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            🗳️ PM Opinion Poll
+          </button>
+          <button
+            onClick={() => setActiveTab("cm")}
+            className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all ${
+              activeTab === "cm"
+                ? "bg-green-600 text-white shadow-lg shadow-green-500/30"
+                : "bg-card border border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            🏛️ CM Opinion Poll {cmState ? `— ${cmState}` : ""}
+          </button>
+        </div>
+
+        {/* ── CM VOTING SECTION ─────────────────────────────────────────────── */}
+        {activeTab === "cm" && (
+          <motion.div
+            key="cm"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            {!loggedIn ? (
+              <div className="glass-card p-10 text-center space-y-4">
+                <Lock className="h-10 w-10 text-primary mx-auto" />
+                <h3 className="text-xl font-bold">Login to Vote for Chief Minister</h3>
+                <p className="text-muted-foreground">You can vote for your state's CM after signing in.</p>
+                <button onClick={() => navigate("/login")} className="btn-saffron flex items-center gap-2 mx-auto">
+                  <LogIn className="h-4 w-4" /> Login
+                </button>
+              </div>
+            ) : cmLoading ? (
+              <div className="glass-card p-10 flex items-center justify-center">
+                <div className="animate-spin h-8 w-8 rounded-full border-2 border-primary border-t-transparent" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left: vote card */}
+                <div className="glass-card p-6 space-y-5">
+                  <div>
+                    <h3 className="font-display font-bold text-xl mb-1">
+                      Chief Minister Poll
+                    </h3>
+                    <p className="text-muted-foreground text-sm">
+                      {cmState ? `Voting for: ${cmState}` : "Vote for your state's Chief Minister"}
+                    </p>
+                  </div>
+
+                  {/* User profile badge */}
+                  {profile && (
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center text-sm font-bold text-white">
+                        {(profile.full_name as string || "U").charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-sm">{profile.full_name as string}</div>
+                        <div className="text-xs text-muted-foreground">{cmState} · Age {profile.age_group as string}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {cmVoted || cmMyVote.has_voted ? (
+                    <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/30 space-y-2">
+                      <div className="flex items-center gap-2 text-green-400 font-semibold">
+                        <CheckCircle className="h-5 w-5" /> Vote Recorded!
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        You voted for{" "}
+                        <span className="font-semibold text-foreground">
+                          {cmCandidates.find((c) => c.id === (cmMyVote.candidate_id || cmSelected))?.name}
+                        </span>
+                        <br/>One person, one vote — your ballot is final.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        {cmCandidates.map((c) => (
+                          <button
+                            key={c.id}
+                            onClick={() => setCmSelected(c.id)}
+                            className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left ${
+                              cmSelected === c.id
+                                ? "border-green-500/50 bg-green-500/10"
+                                : "border-border/50 hover:border-border hover:bg-muted/30"
+                            }`}
+                          >
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: c.color }}>
+                              {c.name.charAt(0)}
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-medium text-sm">{c.name}</div>
+                              <div className="text-xs text-muted-foreground">{c.party}</div>
+                            </div>
+                            {cmSelected === c.id && <CheckCircle className="h-4 w-4 text-green-400" />}
+                          </button>
+                        ))}
+                      </div>
+
+                      {cmError && (
+                        <div className="flex items-center gap-2 text-red-400 text-sm p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                          <AlertCircle className="h-4 w-4 flex-shrink-0" /> {cmError}
+                        </div>
+                      )}
+
+                      <button
+                        onClick={handleCMVote}
+                        disabled={!cmSelected || cmVoting}
+                        className="w-full btn-saffron disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        style={{ background: "linear-gradient(135deg, #16a34a, #15803d)" }}
+                      >
+                        {cmVoting ? (
+                          <><div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" /> Casting Vote…</>
+                        ) : (
+                          <><Vote className="h-4 w-4" /> Cast CM Vote</>                        )}
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Right: CM results */}
+                <div className="glass-card p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-display font-bold text-xl">📊 {cmState} Results</h3>
+                    <button
+                      onClick={async () => { if (cmState) { const r = await apiGetCMResults(cmState); setCmResults(r); } }}
+                      className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </div>
+
+                  {cmResults && cmResults.total_votes > 0 ? (
+                    <>
+                      <p className="text-xs text-muted-foreground">{cmResults.total_votes} votes cast</p>
+                      <div className="space-y-3">
+                        {cmCandidates.map((c) => {
+                          const r = cmResults.overall?.[c.id];
+                          const pct = r?.percentage ?? 0;
+                          return (
+                            <div key={c.id}>
+                              <div className="flex justify-between text-sm mb-1">
+                                <span className="font-medium">{c.name} <span className="text-muted-foreground text-xs">({c.party})</span></span>
+                                <span style={{ color: c.color }} className="font-bold">{pct}%</span>
+                              </div>
+                              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                <motion.div
+                                  className="h-full rounded-full"
+                                  style={{ background: c.color }}
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${pct}%` }}
+                                  transition={{ duration: 0.8, ease: "easeOut" }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Age group filter for CM */}
+                      <div className="pt-2">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-medium text-muted-foreground">Age-Group Preference</p>
+                          <div className="flex gap-1">
+                            {["18-25","26-40","41-60","60+"].map((ag) => (
+                              <button key={ag} onClick={() => setCmSelectedAge(ag)}
+                                className={`px-2 py-0.5 rounded-full text-xs font-medium transition-all ${
+                                  cmSelectedAge === ag ? "bg-green-600 text-white" : "bg-muted text-muted-foreground hover:text-foreground"
+                                }`}>{ag}</button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          {cmCandidates.map((c) => {
+                            const pct = cmResults?.by_age?.[cmSelectedAge]?.[c.id]?.percentage ?? 0;
+                            return (
+                              <div key={c.id} className="flex items-center gap-2">
+                                <span className="text-xs w-28 truncate text-muted-foreground">{c.name}</span>
+                                <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                                  <motion.div className="h-full rounded-full" style={{ background: c.color }}
+                                    initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} />
+                                </div>
+                                <span className="text-xs w-8 text-right" style={{ color: c.color }}>{pct}%</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">
+                      No CM votes yet for {cmState}. Be the first to vote!
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
       </motion.div>
     </div>
   );
