@@ -1,0 +1,9 @@
+# Full local requirements — use these when running with the fine-tuned DistilBERT model
+# Run: pip install -r requirements_local.txt
+-r requirements.txt
+torch
+transformers
+sentence-transformers
+scikit-learn
+numpy
+xgboost

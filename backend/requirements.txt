@@ -1,19 +1,29 @@
+# ── Core API ───────────────────────────────────────────────────────────────────
 fastapi
 uvicorn[standard]
+python-multipart
+
+# ── Database ───────────────────────────────────────────────────────────────────
 motor
+
+# ── Auth ───────────────────────────────────────────────────────────────────────
 python-jose[cryptography]
 passlib[bcrypt]
-sentence-transformers
-transformers
-torch
-xgboost
-tavily-python
+email-validator
+
+# ── Config / Env ───────────────────────────────────────────────────────────────
 python-dotenv
 pydantic
 pydantic-settings
-requests
-scikit-learn
-numpy
+
+# ── AI / LLM (cloud - no PyTorch needed) ───────────────────────────────────────
 groq
-email-validator
-python-multipart
+requests
+
+# ── Evidence retrieval ─────────────────────────────────────────────────────────
+tavily-python
+
+# ── NOTE: PyTorch, transformers, sentence-transformers, scikit-learn, numpy, xgboost
+# ── are NOT listed here because they exceed Render's 512MB free tier RAM limit.
+# ── The cloud analyzer (analyzer_cloud.py) uses Groq + Wikipedia + Tavily instead.
+# ── To run the full DistilBERT pipeline locally, install: backend/requirements_local.txt
