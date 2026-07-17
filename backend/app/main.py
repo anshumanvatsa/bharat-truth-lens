@@ -1,5 +1,7 @@
+import traceback
+
 from fastapi import FastAPI, Request
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 
 from .config import get_settings
 from .routers import auth as auth_router
@@ -10,12 +12,7 @@ settings = get_settings()
 
 app = FastAPI(title=settings.app_name)
 
-# ── Explicit CORS — bypasses CORSMiddleware entirely ─────────────────────────
-# CORSMiddleware was failing to add headers (Starlette version / middleware
-# ordering issue on Render). This custom middleware always adds the headers.
-#
-# We use JWT Bearer tokens (not cookies) so allow_credentials is not needed.
-
+# ── CORS headers — always injected, even on 500 errors ───────────────────────
 CORS_HEADERS = {
     "Access-Control-Allow-Origin":  "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
@@ -25,16 +22,27 @@ CORS_HEADERS = {
 
 @app.middleware("http")
 async def cors_middleware(request: Request, call_next):
-    # Handle preflight immediately — never pass OPTIONS to routers
+    # Preflight: respond immediately, never hit routers
     if request.method == "OPTIONS":
         return Response(status_code=200, headers=CORS_HEADERS)
 
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        # Unhandled exception — return 500 WITH CORS headers so browser
+        # can read the error body instead of seeing a CORS block
+        tb = traceback.format_exc()
+        print(f"[UNHANDLED EXCEPTION] {exc}\n{tb}")
+        response = JSONResponse(
+            status_code=500,
+            content={"detail": f"Internal server error: {str(exc)}"},
+            headers=CORS_HEADERS,
+        )
+        return response
 
-    # Inject CORS headers into every response
+    # Inject CORS into every normal response
     for key, value in CORS_HEADERS.items():
         response.headers[key] = value
-
     return response
 
 
@@ -44,7 +52,6 @@ app.include_router(analyze_router.router)
 app.include_router(vote_router.router)
 
 
-# Health check
 @app.get("/health", tags=["system"])
 async def health_check():
     return {"status": "ok"}
