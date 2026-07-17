@@ -14,10 +14,11 @@ app = FastAPI(title=settings.app_name)
 origins = [
     "http://localhost:8080",
     "http://127.0.0.1:8080",
-    "http://localhost:5173",   # Vite dev server
-    "http://127.0.0.1:5173",  # Vite dev server
-    # Add your Vercel URL here after deployment:
-    # "https://your-project.vercel.app",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    # Production Vercel deployment
+    "https://bharat-truth-lens.vercel.app",
+    "https://bharat-truth-lens-gdj4b8ad6-atulvatsamishra-gmailcoms-projects.vercel.app",
 ]
 
 app.add_middleware(
