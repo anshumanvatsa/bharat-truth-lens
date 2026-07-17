@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="./assets/banner.png" alt="Bharat Truth Lens Banner" width="100%" />
+
 # 🇮🇳 Pulse of India — Bharat Truth Lens
 
 ### AI-Powered Fake News Detection & Civic Engagement Platform
