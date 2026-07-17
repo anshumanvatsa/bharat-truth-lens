@@ -9,6 +9,7 @@ motor
 # ── Auth ───────────────────────────────────────────────────────────────────────
 python-jose[cryptography]
 passlib[bcrypt]
+bcrypt==4.0.1    # pin: bcrypt>=4.1.3 breaks passlib 1.7.4 (72-byte self-test error)
 email-validator
 
 # ── Config / Env ───────────────────────────────────────────────────────────────
