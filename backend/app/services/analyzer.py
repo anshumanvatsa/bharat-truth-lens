@@ -14,15 +14,36 @@ from sklearn.metrics.pairwise import cosine_similarity
 load_dotenv()
 
 # =========================================================
-# MODEL LOADING
+# MODEL LOADING — local fine-tuned first, HuggingFace fallback
 # =========================================================
 
 BASE_DIR   = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 MODEL_PATH = os.path.join(BASE_DIR, "..", "ml", "models", "liar_model")
 
-tokenizer = DistilBertTokenizerFast.from_pretrained(MODEL_PATH, local_files_only=True)
-model     = DistilBertForSequenceClassification.from_pretrained(MODEL_PATH, local_files_only=True)
-embedder  = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
+# HuggingFace fallback — works in production without local weights
+HF_FALLBACK = "distilbert-base-uncased"
+
+_model_loaded_from = None
+
+try:
+    if os.path.isdir(MODEL_PATH) and os.path.exists(os.path.join(MODEL_PATH, "config.json")):
+        tokenizer = DistilBertTokenizerFast.from_pretrained(MODEL_PATH, local_files_only=True)
+        model     = DistilBertForSequenceClassification.from_pretrained(MODEL_PATH, local_files_only=True)
+        _model_loaded_from = "local"
+        print(f"[Analyzer] Loaded fine-tuned model from {MODEL_PATH}")
+    else:
+        raise FileNotFoundError("Local model not found")
+except Exception as e:
+    print(f"[Analyzer] Local model unavailable ({e}). Downloading {HF_FALLBACK} from HuggingFace...")
+    tokenizer = DistilBertTokenizerFast.from_pretrained(HF_FALLBACK)
+    model     = DistilBertForSequenceClassification.from_pretrained(
+        HF_FALLBACK, num_labels=6
+    )
+    _model_loaded_from = "huggingface"
+    print(f"[Analyzer] Using base {HF_FALLBACK} (accuracy lower than fine-tuned)")
+
+model.eval()
+embedder = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
 
 labels = ["pants-fire", "false", "barely-true", "half-true", "mostly-true", "true"]
 
