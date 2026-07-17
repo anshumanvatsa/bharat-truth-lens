@@ -38,6 +38,17 @@ const PARTY_EMOJI: Record<string, string> = {
 
 const AGE_GROUPS = ["18-25", "26-40", "41-60", "60+"];
 
+const INDIAN_STATES = [
+  "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
+  "Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka",
+  "Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya",
+  "Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim",
+  "Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand",
+  "West Bengal","Delhi","Jammu & Kashmir","Puducherry",
+  "Chandigarh","Ladakh","Lakshadweep","Andaman & Nicobar Islands",
+  "Dadra & Nagar Haveli","Daman & Diu",
+];
+
 const ElectionPulsePage = () => {
   const navigate = useNavigate();
 
@@ -64,16 +75,20 @@ const ElectionPulsePage = () => {
   const [activeTab, setActiveTab] = useState<"pm" | "cm">("pm");
 
   // ── CM state ──────────────────────────────────────────────────────────────
-  const [cmCandidates,      setCmCandidates]      = useState<Candidate[]>([]);
-  const [cmState,           setCmState]           = useState("");
-  const [cmResults,         setCmResults]         = useState<any>(null);
-  const [cmMyVote,          setCmMyVote]          = useState<{ has_voted: boolean; candidate_id: string | null }>({ has_voted: false, candidate_id: null });
-  const [cmSelected,        setCmSelected]        = useState("");
-  const [cmVoting,          setCmVoting]          = useState(false);
-  const [cmVoted,           setCmVoted]           = useState(false);
-  const [cmError,           setCmError]           = useState<string | null>(null);
-  const [cmSelectedAge,     setCmSelectedAge]     = useState("18-25");
-  const [cmLoading,         setCmLoading]         = useState(true);
+  // cmState    = user's REGISTERED state (from signup) — only vote here
+  // cmViewState = currently BROWSED state (any state via dropdown)
+  const [cmCandidates,  setCmCandidates]  = useState<Candidate[]>([]);
+  const [cmState,       setCmState]       = useState("");  // registered
+  const [cmViewState,   setCmViewState]   = useState("");  // browsing
+  const [cmResults,     setCmResults]     = useState<any>(null);
+  const [cmMyVote,      setCmMyVote]      = useState<{ has_voted: boolean; candidate_id: string | null }>({ has_voted: false, candidate_id: null });
+  const [cmSelected,    setCmSelected]    = useState("");
+  const [cmVoting,      setCmVoting]      = useState(false);
+  const [cmVoted,       setCmVoted]       = useState(false);
+  const [cmError,       setCmError]       = useState<string | null>(null);
+  const [cmSelectedAge, setCmSelectedAge] = useState("18-25");
+  const [cmLoading,     setCmLoading]     = useState(true);
+  const [cmStateLoading,setCmStateLoading]= useState(false);
 
   // Load PM + CM data on mount
   useEffect(() => {
@@ -102,6 +117,7 @@ const ElectionPulsePage = () => {
             setCmMyVote(cmMv);
             if (cmMv.has_voted) setCmVoted(true);
             if (cmCand.state) {
+              setCmViewState(cmCand.state);
               const cmR = await apiGetCMResults(cmCand.state);
               setCmResults(cmR);
             }
@@ -117,6 +133,25 @@ const ElectionPulsePage = () => {
       }
     })();
   }, [loggedIn]);
+
+  // Reload candidates+results when browsed state changes
+  useEffect(() => {
+    if (!cmViewState) return;
+    (async () => {
+      setCmStateLoading(true);
+      setCmSelected("");
+      try {
+        const [cmR, cmCand] = await Promise.all([
+          apiGetCMResults(cmViewState),
+          fetch(`${window.__API_BASE__ || import.meta.env.VITE_API_URL || "https://bharat-truth-lens.onrender.com"}/vote/cm/results?state=${encodeURIComponent(cmViewState)}`).then(r => r.json()),
+        ]);
+        // candidates come from results endpoint
+        if (cmCand.candidates) setCmCandidates(cmCand.candidates);
+        setCmResults(cmR);
+      } catch {}
+      finally { setCmStateLoading(false); }
+    })();
+  }, [cmViewState]);
 
   const handleVote = async () => {
     if (!selectedCandidate) return setError("Please select a candidate first.");
@@ -137,16 +172,15 @@ const ElectionPulsePage = () => {
 
   const handleCMVote = async () => {
     if (!cmSelected) return setCmError("Please select a candidate first.");
+    if (cmViewState !== cmState) return setCmError("You can only vote for your registered state.");
     setCmVoting(true);
     setCmError(null);
     try {
       await apiCastCMVote(cmSelected);
       setCmMyVote({ has_voted: true, candidate_id: cmSelected });
       setCmVoted(true);
-      if (cmState) {
-        const cmR = await apiGetCMResults(cmState);
-        setCmResults(cmR);
-      }
+      const cmR = await apiGetCMResults(cmState);
+      setCmResults(cmR);
     } catch (err: any) {
       setCmError(err.message || "CM vote failed. Please try again.");
     } finally {
@@ -523,7 +557,7 @@ const ElectionPulsePage = () => {
                 : "bg-card border border-border text-muted-foreground hover:text-foreground"
             }`}
           >
-            🏛️ CM Opinion Poll {cmState ? `— ${cmState}` : ""}
+            🏛️ CM Opinion Poll
           </button>
         </div>
 
@@ -549,16 +583,49 @@ const ElectionPulsePage = () => {
                 <div className="animate-spin h-8 w-8 rounded-full border-2 border-primary border-t-transparent" />
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-4">
+
+                {/* ── State selector dropdown ── */}
+                <div className="glass-card p-4 flex flex-wrap items-center gap-3">
+                  <MapPin className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-sm font-medium text-muted-foreground">Viewing CM Poll for:</span>
+                  <select
+                    value={cmViewState}
+                    onChange={(e) => setCmViewState(e.target.value)}
+                    className="flex-1 min-w-[180px] bg-muted border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  >
+                    <option value="">— Select a state —</option>
+                    {INDIAN_STATES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  {cmState && cmViewState !== cmState && (
+                    <button
+                      onClick={() => setCmViewState(cmState)}
+                      className="text-xs px-3 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors whitespace-nowrap"
+                    >
+                      Go to my state ({cmState})
+                    </button>
+                  )}
+                </div>
+
+                {cmStateLoading ? (
+                  <div className="glass-card p-10 flex items-center justify-center">
+                    <div className="animate-spin h-8 w-8 rounded-full border-2 border-primary border-t-transparent" />
+                  </div>
+                ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Left: vote card */}
                 <div className="glass-card p-6 space-y-5">
                   <div>
                     <h3 className="font-display font-bold text-xl mb-1">
-                      Chief Minister Poll
+                      {cmViewState || "Select a State"} CM Poll
                     </h3>
-                    <p className="text-muted-foreground text-sm">
-                      {cmState ? `Voting for: ${cmState}` : "Vote for your state's Chief Minister"}
-                    </p>
+                    {cmViewState === cmState ? (
+                      <p className="text-xs text-green-400 font-medium">✅ Your registered state — you can vote here</p>
+                    ) : cmState ? (
+                      <p className="text-xs text-amber-400 font-medium">👁 View only — your vote is for {cmState}</p>
+                    ) : null}
                   </div>
 
                   {/* User profile badge */}
@@ -574,7 +641,12 @@ const ElectionPulsePage = () => {
                     </div>
                   )}
 
-                  {cmVoted || cmMyVote.has_voted ? (
+                  {/* Candidates list */}
+                  {!cmViewState ? (
+                    <div className="h-24 flex items-center justify-center text-muted-foreground text-sm">
+                      Select a state above to see candidates
+                    </div>
+                  ) : (cmVoted || cmMyVote.has_voted) && cmViewState === cmState ? (
                     <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/30 space-y-2">
                       <div className="flex items-center gap-2 text-green-400 font-semibold">
                         <CheckCircle className="h-5 w-5" /> Vote Recorded!
@@ -593,10 +665,12 @@ const ElectionPulsePage = () => {
                         {cmCandidates.map((c) => (
                           <button
                             key={c.id}
-                            onClick={() => setCmSelected(c.id)}
+                            onClick={() => cmViewState === cmState ? setCmSelected(c.id) : undefined}
                             className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left ${
-                              cmSelected === c.id
+                              cmSelected === c.id && cmViewState === cmState
                                 ? "border-green-500/50 bg-green-500/10"
+                                : cmViewState !== cmState
+                                ? "border-border/30 opacity-70 cursor-default"
                                 : "border-border/50 hover:border-border hover:bg-muted/30"
                             }`}
                           >
@@ -607,7 +681,7 @@ const ElectionPulsePage = () => {
                               <div className="font-medium text-sm">{c.name}</div>
                               <div className="text-xs text-muted-foreground">{c.party}</div>
                             </div>
-                            {cmSelected === c.id && <CheckCircle className="h-4 w-4 text-green-400" />}
+                            {cmSelected === c.id && cmViewState === cmState && <CheckCircle className="h-4 w-4 text-green-400" />}
                           </button>
                         ))}
                       </div>
@@ -618,17 +692,28 @@ const ElectionPulsePage = () => {
                         </div>
                       )}
 
-                      <button
-                        onClick={handleCMVote}
-                        disabled={!cmSelected || cmVoting}
-                        className="w-full btn-saffron disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        style={{ background: "linear-gradient(135deg, #16a34a, #15803d)" }}
-                      >
-                        {cmVoting ? (
-                          <><div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" /> Casting Vote…</>
-                        ) : (
-                          <><Vote className="h-4 w-4" /> Cast CM Vote</>                        )}
-                      </button>
+                      {/* Vote button OR view-only notice */}
+                      {cmViewState === cmState ? (
+                        <button
+                          onClick={handleCMVote}
+                          disabled={!cmSelected || cmVoting}
+                          className="w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm text-white transition-all"
+                          style={{ background: "linear-gradient(135deg, #16a34a, #15803d)" }}
+                        >
+                          {cmVoting ? (
+                            <><div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" /> Casting Vote…</>
+                          ) : (
+                            <><Vote className="h-4 w-4" /> Cast CM Vote for {cmState}</>
+                          )}
+                        </button>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
+                          <p className="text-xs text-amber-400 font-medium">👁 View only</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            You can only vote for <span className="text-foreground font-semibold">{cmState}</span> (your registered state)
+                          </p>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -636,16 +721,20 @@ const ElectionPulsePage = () => {
                 {/* Right: CM results */}
                 <div className="glass-card p-6 space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-display font-bold text-xl">📊 {cmState} Results</h3>
+                    <h3 className="font-display font-bold text-xl">📊 {cmViewState || "—"} Results</h3>
                     <button
-                      onClick={async () => { if (cmState) { const r = await apiGetCMResults(cmState); setCmResults(r); } }}
+                      onClick={async () => { if (cmViewState) { const r = await apiGetCMResults(cmViewState); setCmResults(r); } }}
                       className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors"
                     >
                       <RefreshCw className="h-4 w-4 text-muted-foreground" />
                     </button>
                   </div>
 
-                  {cmResults && cmResults.total_votes > 0 ? (
+                  {!cmViewState ? (
+                    <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">
+                      Select a state to see results
+                    </div>
+                  ) : cmResults && cmResults.total_votes > 0 ? (
                     <>
                       <p className="text-xs text-muted-foreground">{cmResults.total_votes} votes cast</p>
                       <div className="space-y-3">
@@ -704,10 +793,12 @@ const ElectionPulsePage = () => {
                     </>
                   ) : (
                     <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">
-                      No CM votes yet for {cmState}. Be the first to vote!
+                      No CM votes yet for {cmViewState}. Be the first!
                     </div>
                   )}
                 </div>
+              </div>
+              )}
               </div>
             )}
           </motion.div>
