@@ -1,0 +1,32 @@
+{
+  "dataset": "fever_eval_500.json",
+  "dataset_size": 500,
+  "wikipedia_coverage": "500/500",
+  "tavily_coverage": "500/500",
+  "variants": {
+    "V-A  DistilBERT only": {
+      "accuracy": 0.512,
+      "macro_f1": 0.47048611111111116,
+      "f1_false": 0.61875,
+      "f1_true": 0.32222222222222224
+    },
+    "V-B  + Evidence retrieval": {
+      "accuracy": 0.544,
+      "macro_f1": 0.5432692307692308,
+      "f1_false": 0.5615384615384615,
+      "f1_true": 0.525
+    },
+    "V-C  + Semantic similarity": {
+      "accuracy": 0.544,
+      "macro_f1": 0.5432692307692308,
+      "f1_false": 0.5615384615384615,
+      "f1_true": 0.525
+    },
+    "V-D  + Source credibility (Full hybrid)": {
+      "accuracy": 0.552,
+      "macro_f1": 0.5499188246451592,
+      "f1_false": 0.5805243445692884,
+      "f1_true": 0.51931330472103
+    }
+  }
+}

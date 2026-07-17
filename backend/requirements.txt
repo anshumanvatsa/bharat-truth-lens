@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+motor
+python-jose[cryptography]
+passlib[bcrypt]
+sentence-transformers
+transformers
+torch
+xgboost
+tavily-python
+python-dotenv
+pydantic
+requests
+scikit-learn
+numpy
+groq

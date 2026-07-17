@@ -1,0 +1,85 @@
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ── Python / Backend ──────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments — NEVER commit these (multi-GB)
+venv/
+.venv/
+env/
+ENV/
+backend/venv/
+backend/.venv/
+
+# ── ML Models — Too large for GitHub (use HuggingFace Hub instead) ────────────
+# DistilBERT weights (255 MB each)
+ml/models/
+*.safetensors
+*.bin
+
+# LLaMA GGUF model (4.69 GB — never commit this)
+*.gguf
+backend/app/models/
+backend/app/models/*.gguf
+
+# PyTorch optimizer state (510 MB — only needed to resume training, not inference)
+optimizer.pt
+*.optimizer.pt
+ml/models/liar_model/checkpoints/
+
+# ── ML Data / Cache ───────────────────────────────────────────────────────────
+# Evidence cache files (can be hundreds of MB)
+ml/data/evidence_cache_*.json
+
+# Generated figures (reproducible, don't need versioning)
+ml/data/figures/
+
+# Raw datasets (download separately)
+ml/data/liar/
+ml/data/fever_eval_*.json
+ml/data/fever_subset.json
+
+# ── Environment Files ─────────────────────────────────────────────────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+# .env.example files ARE committed (they're templates, not secrets)
+
+# ── Editor / OS ───────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── Testing / Coverage ────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+htmlcov/
+.pytest_cache/
+.coverage
+
+# ── Build Artifacts ───────────────────────────────────────────────────────────
+*.egg-info/
+build/

@@ -1,0 +1,168 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* your base styles */
+
+  :root {
+    --background: 216 50% 11%;
+    --foreground: 210 40% 92%;
+
+    --card: 216 48% 14%;
+    --card-foreground: 210 40% 92%;
+
+    --popover: 216 48% 14%;
+    --popover-foreground: 210 40% 92%;
+
+    --primary: 30 100% 60%;
+    --primary-foreground: 216 50% 8%;
+
+    --secondary: 199 92% 64%;
+    --secondary-foreground: 216 50% 8%;
+
+    --muted: 216 40% 18%;
+    --muted-foreground: 215 20% 55%;
+
+    --accent: 199 92% 64%;
+    --accent-foreground: 216 50% 8%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 216 30% 22%;
+    --input: 216 30% 22%;
+    --ring: 30 100% 60%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 216 50% 9%;
+    --sidebar-foreground: 210 40% 92%;
+    --sidebar-primary: 30 100% 60%;
+    --sidebar-primary-foreground: 216 50% 8%;
+    --sidebar-accent: 216 40% 18%;
+    --sidebar-accent-foreground: 210 40% 92%;
+    --sidebar-border: 216 30% 22%;
+    --sidebar-ring: 30 100% 60%;
+
+    /* Custom tokens */
+    --navy-deep: 216 55% 8%;
+    --navy: 216 50% 11%;
+    --navy-light: 216 48% 16%;
+    --saffron: 30 100% 60%;
+    --saffron-glow: 30 100% 70%;
+    --electric: 199 92% 64%;
+    --electric-glow: 199 92% 74%;
+    --success: 142 76% 46%;
+    --warning: 45 93% 47%;
+    --danger: 0 72% 51%;
+
+    --gradient-saffron: linear-gradient(135deg, hsl(30 100% 60%), hsl(25 100% 50%));
+    --gradient-electric: linear-gradient(135deg, hsl(199 92% 64%), hsl(210 100% 60%));
+    --gradient-hero: linear-gradient(180deg, hsl(216 55% 8%) 0%, hsl(216 50% 11%) 50%, hsl(216 48% 16%) 100%);
+    --shadow-saffron: 0 0 30px -5px hsl(30 100% 60% / 0.3);
+    --shadow-electric: 0 0 30px -5px hsl(199 92% 64% / 0.3);
+    --shadow-card: 0 4px 24px -4px hsl(216 55% 4% / 0.6);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer components {
+  .glow-saffron {
+    box-shadow: var(--shadow-saffron);
+  }
+
+  .glow-electric {
+    box-shadow: var(--shadow-electric);
+  }
+
+  .text-gradient-saffron {
+    background: var(--gradient-saffron);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-electric {
+    background: var(--gradient-electric);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .card-glass {
+    @apply bg-card/80 backdrop-blur-xl border border-border rounded-xl;
+    box-shadow: var(--shadow-card);
+  }
+
+  .metric-card {
+    @apply card-glass p-6 relative overflow-hidden transition-all duration-300;
+  }
+
+  .metric-card:hover {
+    @apply border-primary/40;
+    box-shadow: var(--shadow-saffron);
+    transform: translateY(-2px);
+  }
+
+  .metric-card::before {
+    content: '';
+    @apply absolute top-0 left-0 right-0 h-[2px];
+    background: var(--gradient-saffron);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .metric-card:hover::before {
+    opacity: 1;
+  }
+
+  .nav-glass {
+    @apply bg-card/60 backdrop-blur-2xl border-b border-border/50;
+  }
+
+  .btn-saffron {
+    background: var(--gradient-saffron);
+    @apply text-primary-foreground font-semibold px-6 py-3 rounded-lg transition-all duration-300;
+    box-shadow: 0 4px 16px -2px hsl(30 100% 60% / 0.4);
+  }
+
+  .btn-saffron:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px -2px hsl(30 100% 60% / 0.5);
+  }
+
+  .gauge-ring {
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s ease-out;
+  }
+
+  .data-pulse {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+}
